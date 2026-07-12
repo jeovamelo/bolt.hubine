@@ -14,6 +14,13 @@ export default class DeepseekProvider extends BaseProvider {
 
   staticModels: ModelInfo[] = [
     {
+      name: 'deepseek-v4-flash',
+      label: 'DeepSeek V4 Flash (Fast & Efficient)',
+      provider: 'Deepseek',
+      maxTokenAllowed: 128000,
+      maxCompletionTokens: 8192,
+    },
+    {
       name: 'deepseek-coder',
       label: 'Deepseek-Coder',
       provider: 'Deepseek',

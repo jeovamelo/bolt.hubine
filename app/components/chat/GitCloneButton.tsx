@@ -167,7 +167,7 @@ ${escapeBoltTags(file.content)}
           setSelectedProvider(null);
           setIsDialogOpen(true);
         }}
-        title="Clone a repo"
+        title="Clonar um repositório"
         variant="default"
         size="lg"
         className={classNames(
@@ -181,7 +181,7 @@ ${escapeBoltTags(file.content)}
         )}
         disabled={!ready || loading}
       >
-        Clone a repo
+        Clonar repositório
         <div className="flex items-center gap-1 ml-2">
           <Github className="w-4 h-4" />
           <GitBranch className="w-4 h-4" />
