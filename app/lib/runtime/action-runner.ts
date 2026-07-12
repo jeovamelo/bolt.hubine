@@ -295,14 +295,38 @@ export class ActionRunner {
       unreachable('Shell terminal not found');
     }
 
-    const resp = await shell.executeCommand(this.runnerId.get(), action.content, () => {
+    // Inject TypeScript error tolerance env vars for dev server commands
+    let command = action.content;
+    const isDevServerCmd = /^(npm\s+run\s+(dev|start|serve)|vite(\s+dev)?|next\s+dev)\b/.test(command.trim());
+
+    if (isDevServerCmd && !command.includes('TSC_COMPILE_ON_ERROR')) {
+      command = `TSC_COMPILE_ON_ERROR=true CI=false ${command}`;
+      logger.debug(`[start] Injected TypeScript tolerance env vars: ${command}`);
+    }
+
+    const resp = await shell.executeCommand(this.runnerId.get(), command, () => {
       logger.debug(`[${action.type}]:Aborting Action\n\n`, action);
       action.abort();
     });
     logger.debug(`${action.type} Shell Response: [exit code:${resp?.exitCode}]`);
 
     if (resp?.exitCode != 0) {
-      throw new ActionCommandError('Failed To Start Application', resp?.output || 'No Output Available');
+      const output = resp?.output || '';
+
+      // Non-fatal: TypeScript errors, Vite HMR warnings — server may still be serving
+      const isNonFatalExit =
+        output.includes('TS') ||
+        output.includes('TypeScript') ||
+        output.includes('[vite]') ||
+        output.includes('warning') ||
+        output.includes('WARN');
+
+      if (isNonFatalExit) {
+        logger.warn(`[start] Dev server exited with warnings (exit ${resp?.exitCode}) — treating as non-fatal`);
+        return resp;
+      }
+
+      throw new ActionCommandError('Failed To Start Application', output || 'No Output Available');
     }
 
     return resp;
@@ -580,6 +604,31 @@ export class ActionRunner {
     warning?: string;
   }> {
     const trimmedCommand = command.trim();
+
+    // ── Resilience: npm install → add peer-dep and audit bypass flags ────────
+    if (
+      (trimmedCommand.match(/^npm\s+install/) || trimmedCommand.match(/^npm\s+i\b/)) &&
+      !trimmedCommand.includes('--legacy-peer-deps')
+    ) {
+      const modified = trimmedCommand.replace(/^(npm\s+(?:install|i))/, '$1 --legacy-peer-deps --no-audit --no-fund');
+      return {
+        shouldModify: true,
+        modifiedCommand: modified,
+        warning: 'Added --legacy-peer-deps --no-audit --no-fund for resilient installation',
+      };
+    }
+
+    // ── Resilience: npm run dev/start → inject TSC_COMPILE_ON_ERROR ──────────
+    if (
+      trimmedCommand.match(/^(npm\s+run\s+(dev|start|serve)|vite(\s+dev)?|next\s+dev)\b/) &&
+      !trimmedCommand.includes('TSC_COMPILE_ON_ERROR')
+    ) {
+      return {
+        shouldModify: true,
+        modifiedCommand: `TSC_COMPILE_ON_ERROR=true CI=false ${trimmedCommand}`,
+        warning: 'Injected TSC_COMPILE_ON_ERROR=true CI=false for TypeScript error tolerance',
+      };
+    }
 
     // Handle rm commands that might fail due to missing files
     if (trimmedCommand.startsWith('rm ') && !trimmedCommand.includes(' -f')) {

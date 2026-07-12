@@ -61,6 +61,7 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const hasSelectedPreview = useRef(false);
   const previews = useStore(workbenchStore.previews);
+  const actionAlert = useStore(workbenchStore.alert);
   const activePreview = previews[activePreviewIndex];
   const [displayPath, setDisplayPath] = useState('/');
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
@@ -69,6 +70,9 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const [isDeviceModeOn, setIsDeviceModeOn] = useState(false);
   const [widthPercent, setWidthPercent] = useState<number>(37.5);
   const [currentWidth, setCurrentWidth] = useState<number>(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isLogExpanded, setIsLogExpanded] = useState(false);
+  const MAX_AUTO_RETRIES = 3;
 
   const resizingState = useRef({
     isResizing: false,
@@ -90,6 +94,20 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
   const expoUrl = useStore(expoUrlAtom);
   const [isExpoQrModalOpen, setIsExpoQrModalOpen] = useState(false);
 
+  // Auto-retry: when there's no activePreview (server not up yet), poll every 5s up to 3x
+  useEffect(() => {
+    if (activePreview || retryCount >= MAX_AUTO_RETRIES) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setRetryCount((c) => c + 1);
+      setIframeUrl(undefined);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [activePreview, retryCount]);
+
   useEffect(() => {
     if (!activePreview) {
       setIframeUrl(undefined);
@@ -97,6 +115,9 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
 
       return;
     }
+
+    // Reset retry counter when preview becomes available
+    setRetryCount(0);
 
     const { baseUrl } = activePreview;
     setIframeUrl(baseUrl);
@@ -1011,8 +1032,109 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
               />
             </>
           ) : (
-            <div className="flex w-full h-full justify-center items-center bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary">
-              No preview available
+            <div className="flex flex-col w-full h-full bg-bolt-elements-background-depth-1">
+              {/* ── No Preview Fallback ─────────────────────────────────── */}
+              <div className="flex-1 flex flex-col justify-center items-center gap-5 p-8">
+                <div className="relative">
+                  {/* Pulsing ring */}
+                  {retryCount < MAX_AUTO_RETRIES && !actionAlert && (
+                    <div className="absolute inset-0 rounded-full bg-accent-500/20 animate-ping" />
+                  )}
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                      actionAlert?.type === 'error'
+                        ? 'bg-red-500/15 text-red-400'
+                        : 'bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary'
+                    }`}
+                  >
+                    <div
+                      className={`text-3xl ${
+                        actionAlert?.type === 'error' ? 'i-ph:warning-circle-bold' : 'i-ph:monitor-play'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="text-center max-w-sm">
+                  <h3 className="text-bolt-elements-textPrimary font-semibold text-base mb-1">
+                    {actionAlert?.type === 'error' ? actionAlert.title : 'Preview inicializando...'}
+                  </h3>
+                  <p className="text-bolt-elements-textTertiary text-sm">
+                    {actionAlert?.description ||
+                      (retryCount < MAX_AUTO_RETRIES
+                        ? `Aguardando o servidor de desenvolvimento... (tentativa ${retryCount + 1}/${MAX_AUTO_RETRIES})`
+                        : 'O servidor de desenvolvimento não respondeu. Verifique o terminal.')}
+                  </p>
+                </div>
+
+                {/* Error details */}
+                {actionAlert?.content && (
+                  <div className="w-full max-w-lg">
+                    <button
+                      onClick={() => setIsLogExpanded((v) => !v)}
+                      className="flex items-center gap-2 text-xs text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors mb-2 w-full"
+                    >
+                      <div className={`i-ph:caret-${isLogExpanded ? 'down' : 'right'} text-sm`} />
+                      <span>Detalhes do erro</span>
+                    </button>
+                    {isLogExpanded && (
+                      <pre className="text-xs font-mono bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor rounded-lg p-3 overflow-auto max-h-48 text-red-400 whitespace-pre-wrap break-words">
+                        {actionAlert.content}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setRetryCount(0);
+                      reloadPreview();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-500 hover:brightness-110 text-white text-sm font-medium transition-all"
+                  >
+                    <div className="i-ph:arrow-clockwise text-base" />
+                    Tentar novamente
+                  </button>
+
+                  {actionAlert?.content && (
+                    <button
+                      onClick={() => {
+                        // Copy error to clipboard so user can paste it to chat
+                        navigator.clipboard
+                          ?.writeText(
+                            `Corrija este erro do servidor de desenvolvimento:\n\`\`\`\n${actionAlert.content}\n\`\`\``,
+                          )
+                          .then(() => alert('Erro copiado! Cole no chat para corrigir automaticamente.'));
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-bolt-elements-background-depth-3 hover:bg-bolt-elements-background-depth-4 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary border border-bolt-elements-borderColor text-sm transition-all"
+                    >
+                      <div className="i-ph:copy text-base" />
+                      Copiar erro
+                    </button>
+                  )}
+                </div>
+
+                {/* Auto-retry progress dots */}
+                {retryCount < MAX_AUTO_RETRIES && !actionAlert && (
+                  <div className="flex gap-1.5 items-center">
+                    {Array.from({ length: MAX_AUTO_RETRIES }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          i < retryCount
+                            ? 'bg-accent-500'
+                            : i === retryCount
+                              ? 'bg-accent-500/50 animate-pulse'
+                              : 'bg-bolt-elements-background-depth-3'
+                        }`}
+                      />
+                    ))}
+                    <span className="text-xs text-bolt-elements-textTertiary ml-1">auto-retry</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
