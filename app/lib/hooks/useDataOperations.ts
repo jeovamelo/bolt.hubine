@@ -618,8 +618,8 @@ export function useDataOperations({
             description: chat.description || '',
             messages: validatedMessages,
             timestamp: chat.timestamp || new Date().toISOString(),
-            urlId: chat.urlId || null,
-            metadata: chat.metadata || null,
+            urlId: chat.urlId || undefined,
+            metadata: chat.metadata || undefined,
           };
         });
 

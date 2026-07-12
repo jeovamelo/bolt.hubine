@@ -39,8 +39,8 @@ export class ImportExportService {
           timestamp: msg.timestamp,
         })),
         timestamp: chat.timestamp,
-        urlId: chat.urlId || null,
-        metadata: chat.metadata || null,
+        urlId: chat.urlId || undefined,
+        metadata: chat.metadata || undefined,
       }));
 
       console.log(`Successfully prepared ${sanitizedChats.length} chats for export`);

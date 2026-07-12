@@ -80,10 +80,18 @@ export async function setMessages(
       return;
     }
 
+    /*
+     * IMPORTANT: Do NOT include urlId in the record when it is undefined/null.
+     * The 'urlId' index has { unique: true }, so IndexedDB treats every null/undefined
+     * value as the SAME key — storing multiple chats without a urlId would throw:
+     * "Unable to add key to index 'urlId': at least one key does not satisfy the
+     * uniqueness requirements."
+     * Omitting the property entirely tells IndexedDB to skip indexing this record.
+     */
     const request = store.put({
       id,
       messages,
-      urlId,
+      ...(urlId ? { urlId } : {}),
       description,
       timestamp: timestamp ?? new Date().toISOString(),
       metadata,
