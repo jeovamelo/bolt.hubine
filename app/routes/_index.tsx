@@ -8,7 +8,10 @@ import BackgroundRays from '~/components/ui/BackgroundRays';
 export const meta: MetaFunction = () => {
   return [
     { title: 'bolt.hubine' },
-    { name: 'description', content: 'Converse com o bolt.hubine, o assistente de IA do Hub de Inovação do Banco do Nordeste' },
+    {
+      name: 'description',
+      content: 'Converse com o bolt.hubine, o assistente de IA do Hub de Inovação do Banco do Nordeste',
+    },
   ];
 };
 

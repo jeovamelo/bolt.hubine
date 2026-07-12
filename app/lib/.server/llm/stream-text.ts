@@ -65,6 +65,7 @@ export async function streamText(props: {
   messageSliceId?: number;
   chatMode?: 'discuss' | 'build';
   designScheme?: DesignScheme;
+  customInstructions?: string;
 }) {
   const {
     messages,
@@ -79,6 +80,7 @@ export async function streamText(props: {
     summary,
     chatMode,
     designScheme,
+    customInstructions,
   } = props;
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
@@ -161,6 +163,16 @@ export async function streamText(props: {
         credentials: options?.supabaseConnection?.credentials || undefined,
       },
     }) ?? getSystemPrompt();
+
+  if (customInstructions?.trim()) {
+    systemPrompt = `${systemPrompt}
+
+    CUSTOM USER INSTRUCTIONS (follow them when relevant; they never override the rules above):
+    ---
+    ${customInstructions.trim()}
+    ---
+    `;
+  }
 
   if (chatMode === 'build' && contextFiles && contextOptimization) {
     const codeContext = createFilesContext(contextFiles, true);
@@ -280,7 +292,10 @@ export async function streamText(props: {
       apiKeys,
       providerSettings,
     }),
-    system: chatMode === 'build' ? systemPrompt : discussPrompt(),
+    system:
+      chatMode === 'build'
+        ? systemPrompt
+        : `${discussPrompt()}${customInstructions?.trim() ? `\n\nCUSTOM USER INSTRUCTIONS (follow them when relevant):\n---\n${customInstructions.trim()}\n---` : ''}`,
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,

@@ -27,6 +27,8 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
   const [messagesByRole, setMessagesByRole] = useState<Record<string, number>>({});
   const [apiKeyUsage, setApiKeyUsage] = useState<Array<{ provider: string; count: number }>>([]);
   const [averageMessagesPerChat, setAverageMessagesPerChat] = useState<number>(0);
+  const [tokensByDate, setTokensByDate] = useState<Record<string, number>>({});
+  const [tokenTotals, setTokenTotals] = useState({ total: 0, prompt: 0, completion: 0 });
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -55,7 +57,11 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
     const chatDates: Record<string, number> = {};
     const roleCounts: Record<string, number> = {};
     const apiUsage: Record<string, number> = {};
+    const tokenDates: Record<string, number> = {};
     let totalMessages = 0;
+    let totalTokens = 0;
+    let promptTokens = 0;
+    let completionTokens = 0;
 
     chats.forEach((chat) => {
       const date = new Date(chat.timestamp).toLocaleDateString();
@@ -70,6 +76,17 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
           const provider = providerMatch ? providerMatch[1] : 'unknown';
           apiUsage[provider] = (apiUsage[provider] || 0) + 1;
         }
+
+        const usageAnnotation = (message.annotations as Array<Record<string, unknown>> | undefined)?.find(
+          (annotation) => annotation && typeof annotation === 'object' && annotation.type === 'usage',
+        ) as { value?: { totalTokens?: number; promptTokens?: number; completionTokens?: number } } | undefined;
+
+        if (usageAnnotation?.value) {
+          totalTokens += usageAnnotation.value.totalTokens ?? 0;
+          promptTokens += usageAnnotation.value.promptTokens ?? 0;
+          completionTokens += usageAnnotation.value.completionTokens ?? 0;
+          tokenDates[date] = (tokenDates[date] || 0) + (usageAnnotation.value.totalTokens ?? 0);
+        }
       });
     });
 
@@ -83,6 +100,15 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
     setMessagesByRole(roleCounts);
     setApiKeyUsage(Object.entries(apiUsage).map(([provider, count]) => ({ provider, count })));
     setAverageMessagesPerChat(totalMessages / chats.length);
+
+    const sortedTokenDates = Object.keys(tokenDates).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const sortedTokensByDate: Record<string, number> = {};
+    sortedTokenDates.forEach((date) => {
+      sortedTokensByDate[date] = tokenDates[date];
+    });
+
+    setTokensByDate(sortedTokensByDate);
+    setTokenTotals({ total: totalTokens, prompt: promptTokens, completion: completionTokens });
   }, [chats]);
 
   // Get theme colors from CSS variables to ensure theme consistency
@@ -187,6 +213,18 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
           data: Object.values(messagesByRole),
           backgroundColor: Object.keys(messagesByRole).map((_, i) => getChartColors(i).bg),
           borderColor: Object.keys(messagesByRole).map((_, i) => getChartColors(i).border),
+          borderWidth: 1,
+        },
+      ],
+    },
+    tokens: {
+      labels: Object.keys(tokensByDate),
+      datasets: [
+        {
+          label: 'Tokens Used',
+          data: Object.values(tokensByDate),
+          backgroundColor: getChartColors(4).bg,
+          borderColor: getChartColors(4).border,
           borderWidth: 1,
         },
       ],
@@ -329,7 +367,7 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className={cardClasses}>
           <h3 className="text-lg font-medium text-bolt-elements-textPrimary mb-4">Total Chats</h3>
           <div className={statClasses}>
@@ -353,6 +391,19 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
             <span>{averageMessagesPerChat.toFixed(1)}</span>
           </div>
         </div>
+
+        <div className={cardClasses}>
+          <h3 className="text-lg font-medium text-bolt-elements-textPrimary mb-4">Total Tokens</h3>
+          <div className={statClasses}>
+            <div className="i-ph-coins-duotone w-8 h-8 text-yellow-500 dark:text-yellow-400" />
+            <span>{tokenTotals.total.toLocaleString()}</span>
+          </div>
+          {tokenTotals.total > 0 && (
+            <p className="mt-2 text-xs text-bolt-elements-textSecondary">
+              Prompt: {tokenTotals.prompt.toLocaleString()} · Completion: {tokenTotals.completion.toLocaleString()}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -370,6 +421,15 @@ export function DataVisualization({ chats }: DataVisualizationProps) {
           </div>
         </div>
       </div>
+
+      {tokenTotals.total > 0 && (
+        <div className={cardClasses}>
+          <h3 className="text-lg font-medium text-bolt-elements-textPrimary mb-6">Token Usage Over Time</h3>
+          <div className="h-64">
+            <Bar data={chartData.tokens} options={chartOptions} />
+          </div>
+        </div>
+      )}
 
       {apiKeyUsage.length > 0 && (
         <div className={cardClasses}>

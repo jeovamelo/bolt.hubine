@@ -20,6 +20,7 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import { McpTools } from './MCPTools';
 import { WebSearch } from './WebSearch.client';
+import { applyInlineTextEdit } from '~/utils/inlineTextEdit';
 
 interface ChatBoxProps {
   isModelSettingsCollapsed: boolean;
@@ -66,6 +67,36 @@ interface ChatBoxProps {
 }
 
 export const ChatBox: React.FC<ChatBoxProps> = (props) => {
+  const [isEditingText, setIsEditingText] = React.useState(false);
+  const [editedText, setEditedText] = React.useState('');
+
+  const selectedText = props.selectedElement?.textContent?.trim() ?? '';
+  const canInlineEdit = selectedText.length > 0 && (props.selectedElement?.textContent?.length ?? 0) < 100;
+
+  React.useEffect(() => {
+    setIsEditingText(false);
+  }, [props.selectedElement]);
+
+  const handleApplyInlineEdit = async () => {
+    if (!editedText.trim() || editedText === selectedText) {
+      setIsEditingText(false);
+      return;
+    }
+
+    const result = await applyInlineTextEdit(selectedText, editedText);
+
+    if (result.status === 'applied') {
+      toast.success(`Text updated in ${result.filePath.split('/').pop()}`);
+      props.setSelectedElement?.(null);
+    } else if (result.status === 'not-found') {
+      toast.warning('Text not found in project files — it may be dynamic. Ask the AI instead.');
+    } else {
+      toast.warning(`Text appears ${result.count} times in the project — too ambiguous. Ask the AI instead.`);
+    }
+
+    setIsEditingText(false);
+  };
+
   return (
     <div
       className={classNames(
@@ -153,19 +184,62 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         )}
       </ClientOnly>
       {props.selectedElement && (
-        <div className="flex mx-1.5 gap-2 items-center justify-between rounded-lg rounded-b-none border border-b-none border-bolt-elements-borderColor text-bolt-elements-textPrimary flex py-1 px-2.5 font-medium text-xs">
-          <div className="flex gap-2 items-center lowercase">
-            <code className="bg-accent-500 rounded-4px px-1.5 py-1 mr-0.5 text-white">
-              {props?.selectedElement?.tagName}
-            </code>
-            selected for inspection
+        <div className="flex flex-col mx-1.5 rounded-lg rounded-b-none border border-b-none border-bolt-elements-borderColor text-bolt-elements-textPrimary py-1 px-2.5 font-medium text-xs">
+          <div className="flex gap-2 items-center justify-between">
+            <div className="flex gap-2 items-center lowercase">
+              <code className="bg-accent-500 rounded-4px px-1.5 py-1 mr-0.5 text-white">
+                {props?.selectedElement?.tagName}
+              </code>
+              selected for inspection
+            </div>
+            <div className="flex gap-3 items-center">
+              {canInlineEdit && !isEditingText && (
+                <button
+                  className="bg-transparent text-accent-500 pointer-auto"
+                  onClick={() => {
+                    setEditedText(selectedText);
+                    setIsEditingText(true);
+                  }}
+                >
+                  Edit text
+                </button>
+              )}
+              <button
+                className="bg-transparent text-accent-500 pointer-auto"
+                onClick={() => props.setSelectedElement?.(null)}
+              >
+                Clear
+              </button>
+            </div>
           </div>
-          <button
-            className="bg-transparent text-accent-500 pointer-auto"
-            onClick={() => props.setSelectedElement?.(null)}
-          >
-            Clear
-          </button>
+          {isEditingText && (
+            <div className="flex gap-2 items-center mt-1.5 mb-1">
+              <input
+                autoFocus
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleApplyInlineEdit();
+                  } else if (e.key === 'Escape') {
+                    setIsEditingText(false);
+                  }
+                }}
+                className="flex-1 px-2 py-1 rounded bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor text-bolt-elements-textPrimary focus:outline-none focus:ring-1 focus:ring-accent-500/50"
+                placeholder="New text for this element"
+              />
+              <button className="bg-transparent text-accent-500 pointer-auto" onClick={handleApplyInlineEdit}>
+                Apply
+              </button>
+              <button
+                className="bg-transparent text-bolt-elements-textSecondary pointer-auto"
+                onClick={() => setIsEditingText(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div
@@ -238,7 +312,11 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             minHeight: props.TEXTAREA_MIN_HEIGHT,
             maxHeight: props.TEXTAREA_MAX_HEIGHT,
           }}
-          placeholder={props.chatMode === 'build' ? 'Como o bolt.hubine pode ajudar hoje?' : 'Sobre o que você gostaria de conversar?'}
+          placeholder={
+            props.chatMode === 'build'
+              ? 'Como o bolt.hubine pode ajudar hoje?'
+              : 'Sobre o que você gostaria de conversar?'
+          }
           translate="no"
         />
         <ClientOnly>
@@ -328,6 +406,16 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
             </div>
           ) : null}
+          {props.isStreaming && (
+            <button
+              title="Parar geração"
+              onClick={() => props.handleStop?.()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 transition-all animate-pulse"
+            >
+              <div className="i-ph:stop-circle-bold text-base" />
+              <span>Parar</span>
+            </button>
+          )}
           <SupabaseConnection />
           <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
         </div>

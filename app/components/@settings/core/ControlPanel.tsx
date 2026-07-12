@@ -30,6 +30,7 @@ import CloudProvidersTab from '~/components/@settings/tabs/providers/cloud/Cloud
 import LocalProvidersTab from '~/components/@settings/tabs/providers/local/LocalProvidersTab';
 import McpTab from '~/components/@settings/tabs/mcp/McpTab';
 import IntegrationsTab from '~/components/@settings/tabs/integrations/IntegrationsTab';
+import SecurityTab from '~/components/@settings/tabs/security/SecurityTab';
 
 interface ControlPanelProps {
   open: boolean;
@@ -153,7 +154,9 @@ export const ControlPanel = ({ open, onClose }: ControlPanelProps) => {
       case 'mcp':
         return <McpTab />;
       case 'integrations':
-        return <IntegrationsTab />;
+        return <IntegrationsTab onNavigate={handleTabClick} />;
+      case 'security':
+        return <SecurityTab />;
 
       default:
         return null;

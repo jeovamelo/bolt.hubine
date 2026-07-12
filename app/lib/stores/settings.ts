@@ -255,6 +255,8 @@ const SETTINGS_KEYS = {
   LATEST_BRANCH: 'isLatestBranch',
   AUTO_SELECT_TEMPLATE: 'autoSelectTemplate',
   CONTEXT_OPTIMIZATION: 'contextOptimizationEnabled',
+  AUTO_FIX_ERRORS: 'autoFixErrors',
+  CUSTOM_INSTRUCTIONS: 'customInstructions',
   EVENT_LOGS: 'isEventLogsEnabled',
   PROMPT_ID: 'promptId',
   DEVELOPER_MODE: 'isDeveloperMode',
@@ -284,6 +286,8 @@ const getInitialSettings = () => {
     latestBranch: getStoredBoolean(SETTINGS_KEYS.LATEST_BRANCH, false),
     autoSelectTemplate: getStoredBoolean(SETTINGS_KEYS.AUTO_SELECT_TEMPLATE, true),
     contextOptimization: getStoredBoolean(SETTINGS_KEYS.CONTEXT_OPTIMIZATION, true),
+    autoFixErrors: getStoredBoolean(SETTINGS_KEYS.AUTO_FIX_ERRORS, false),
+    customInstructions: isBrowser ? localStorage.getItem(SETTINGS_KEYS.CUSTOM_INSTRUCTIONS) || '' : '',
     eventLogs: getStoredBoolean(SETTINGS_KEYS.EVENT_LOGS, true),
     promptId: isBrowser ? localStorage.getItem(SETTINGS_KEYS.PROMPT_ID) || 'default' : 'default',
     developerMode: getStoredBoolean(SETTINGS_KEYS.DEVELOPER_MODE, false),
@@ -296,6 +300,8 @@ const initialSettings = getInitialSettings();
 export const latestBranchStore = atom<boolean>(initialSettings.latestBranch);
 export const autoSelectStarterTemplate = atom<boolean>(initialSettings.autoSelectTemplate);
 export const enableContextOptimizationStore = atom<boolean>(initialSettings.contextOptimization);
+export const autoFixErrorsStore = atom<boolean>(initialSettings.autoFixErrors);
+export const customInstructionsStore = atom<string>(initialSettings.customInstructions);
 export const isEventLogsEnabled = atom<boolean>(initialSettings.eventLogs);
 export const promptStore = atom<string>(initialSettings.promptId);
 
@@ -313,6 +319,16 @@ export const updateAutoSelectTemplate = (enabled: boolean) => {
 export const updateContextOptimization = (enabled: boolean) => {
   enableContextOptimizationStore.set(enabled);
   localStorage.setItem(SETTINGS_KEYS.CONTEXT_OPTIMIZATION, JSON.stringify(enabled));
+};
+
+export const updateAutoFixErrors = (enabled: boolean) => {
+  autoFixErrorsStore.set(enabled);
+  localStorage.setItem(SETTINGS_KEYS.AUTO_FIX_ERRORS, JSON.stringify(enabled));
+};
+
+export const updateCustomInstructions = (instructions: string) => {
+  customInstructionsStore.set(instructions);
+  localStorage.setItem(SETTINGS_KEYS.CUSTOM_INSTRUCTIONS, instructions);
 };
 
 export const updateEventLogs = (enabled: boolean) => {

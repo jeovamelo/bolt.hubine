@@ -18,7 +18,8 @@ export type TabType =
   | 'supabase'
   | 'event-logs'
   | 'mcp'
-  | 'integrations';
+  | 'integrations'
+  | 'security';
 
 export type WindowType = 'user' | 'developer';
 
@@ -83,6 +84,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
   integrations: 'Integrations',
+  security: 'Security Scanner',
 };
 
 export const categoryLabels: Record<SettingCategory, string> = {

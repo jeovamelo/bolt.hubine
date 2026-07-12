@@ -1,5 +1,18 @@
 import type { TabType } from './types';
-import { User, Settings, Bell, Star, Database, Cloud, Laptop, Github, Wrench, List, Puzzle } from 'lucide-react';
+import {
+  User,
+  Settings,
+  Bell,
+  Star,
+  Database,
+  Cloud,
+  Laptop,
+  Github,
+  Wrench,
+  List,
+  Puzzle,
+  Shield,
+} from 'lucide-react';
 
 // GitLab icon component
 const GitLabIcon = () => (
@@ -54,6 +67,7 @@ export const TAB_ICONS: Record<TabType, React.ComponentType<{ className?: string
   'event-logs': List,
   mcp: Wrench,
   integrations: Puzzle,
+  security: Shield,
 };
 
 export const TAB_LABELS: Record<TabType, string> = {
@@ -72,6 +86,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
   integrations: 'Integrations',
+  security: 'Security Scanner',
 };
 
 export const TAB_DESCRIPTIONS: Record<TabType, string> = {
@@ -89,7 +104,8 @@ export const TAB_DESCRIPTIONS: Record<TabType, string> = {
   supabase: 'Setup Supabase database connection',
   'event-logs': 'View system events and logs',
   mcp: 'Configure MCP (Model Context Protocol) servers',
-  integrations: 'Manage e-commerce, payments, AI gateway, and developer services',
+  integrations: 'Connection status, built-in capabilities, and roadmap',
+  security: 'Scan for hardcoded secrets and dependency vulnerabilities before deploy',
 };
 
 export const DEFAULT_TAB_CONFIG = [
@@ -107,6 +123,7 @@ export const DEFAULT_TAB_CONFIG = [
   { id: 'event-logs', visible: true, window: 'user' as const, order: 10 },
   { id: 'mcp', visible: true, window: 'user' as const, order: 11 },
   { id: 'integrations', visible: true, window: 'user' as const, order: 12 },
+  { id: 'security', visible: true, window: 'user' as const, order: 13 },
 
   // User Window Tabs (In dropdown, initially hidden)
 ];

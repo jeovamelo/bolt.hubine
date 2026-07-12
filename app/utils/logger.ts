@@ -1,5 +1,6 @@
-export type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'none';
 import { Chalk } from 'chalk';
+
+export type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'none';
 
 const chalk = new Chalk({ level: 3 });
 

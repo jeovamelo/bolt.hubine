@@ -39,6 +39,13 @@ export function useSearchFilter({
           return value.toLowerCase().includes(query);
         }
 
+        if (Array.isArray(value)) {
+          return value.some((entry) => {
+            const content = (entry as { content?: unknown })?.content;
+            return typeof content === 'string' && content.toLowerCase().includes(query);
+          });
+        }
+
         return false;
       }),
     );

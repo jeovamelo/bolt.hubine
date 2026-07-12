@@ -254,6 +254,11 @@ export class WorkbenchStore {
     await this.saveFile(currentDocument.filePath);
   }
 
+  async updateFileContent(filePath: string, content: string) {
+    this.#editorStore.updateFile(filePath, content);
+    await this.saveFile(filePath);
+  }
+
   resetCurrentDocument() {
     const currentDocument = this.currentDocument.get();
 

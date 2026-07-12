@@ -31,6 +31,8 @@ import type { LlmErrorAlertType } from '~/types/actions';
 
 const logger = createScopedLogger('Chat');
 
+const MAX_AUTO_FIX_ATTEMPTS = 3;
+
 export function Chat() {
   renderLogger.trace('Chat');
 
@@ -100,7 +102,16 @@ export const ChatImpl = memo(
       (project) => project.id === supabaseConn.selectedProjectId,
     );
     const supabaseAlert = useStore(workbenchStore.supabaseAlert);
-    const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
+    const {
+      activeProviders,
+      promptId,
+      autoSelectTemplate,
+      contextOptimizationEnabled,
+      autoFixErrors,
+      customInstructions,
+    } = useSettings();
+    const autoFixAttemptsRef = useRef(0);
+    const isAutoFixSendRef = useRef(false);
     const [llmErrorAlert, setLlmErrorAlert] = useState<LlmErrorAlertType | undefined>(undefined);
     const [model, setModel] = useState(() => {
       const savedModel = Cookies.get('selectedModel');
@@ -140,6 +151,7 @@ export const ChatImpl = memo(
         contextOptimization: contextOptimizationEnabled,
         chatMode,
         designScheme,
+        customInstructions,
         supabase: {
           isConnected: supabaseConn.isConnected,
           hasSelectedProject: !!selectedProject,
@@ -398,6 +410,12 @@ export const ChatImpl = memo(
         return;
       }
 
+      if (isAutoFixSendRef.current) {
+        isAutoFixSendRef.current = false;
+      } else {
+        autoFixAttemptsRef.current = 0;
+      }
+
       let finalMessageContent = messageContent;
 
       if (selectedElement) {
@@ -421,12 +439,8 @@ export const ChatImpl = memo(
 
           if (template !== 'blank') {
             const temResp = await getTemplates(template, title).catch((e) => {
-              if (e.message.includes('rate limit')) {
-                toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
-              } else {
-                toast.warning('Failed to import starter template\n Continuing with blank template');
-              }
-
+              // Silently handle template fetch errors and continue with blank template
+              console.debug('Template import skipped:', e.message);
               return null;
             });
 
@@ -555,6 +569,30 @@ export const ChatImpl = memo(
 
       textareaRef.current?.blur();
     };
+
+    useEffect(() => {
+      if (!autoFixErrors || !actionAlert || isLoading || fakeLoading) {
+        return;
+      }
+
+      // past the retry budget: keep the alert visible so the user decides
+      if (autoFixAttemptsRef.current >= MAX_AUTO_FIX_ATTEMPTS) {
+        return;
+      }
+
+      autoFixAttemptsRef.current += 1;
+      isAutoFixSendRef.current = true;
+
+      const isPreview = actionAlert.source === 'preview';
+      const fixMessage = `*Fix this ${isPreview ? 'preview' : 'terminal'} error* \n\`\`\`${isPreview ? 'js' : 'sh'}\n${actionAlert.content}\n\`\`\`\n`;
+
+      workbenchStore.clearAlert();
+      toast.info(
+        `Auto-fixing ${isPreview ? 'preview' : 'terminal'} error (attempt ${autoFixAttemptsRef.current}/${MAX_AUTO_FIX_ATTEMPTS})`,
+      );
+      logStore.logSystem(`Auto fix attempt ${autoFixAttemptsRef.current} for ${actionAlert.source} error`);
+      sendMessage({} as any, fixMessage);
+    }, [actionAlert, isLoading, fakeLoading, autoFixErrors]);
 
     /**
      * Handles the change event for the textarea and updates the input state.

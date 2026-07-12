@@ -7,12 +7,16 @@ import {
   latestBranchStore,
   autoSelectStarterTemplate,
   enableContextOptimizationStore,
+  autoFixErrorsStore,
+  customInstructionsStore,
   tabConfigurationStore,
   resetTabConfiguration as resetTabConfig,
   updateProviderSettings as updateProviderSettingsStore,
   updateLatestBranch,
   updateAutoSelectTemplate,
   updateContextOptimization,
+  updateAutoFixErrors,
+  updateCustomInstructions,
   updateEventLogs,
   updatePromptId,
 } from '~/lib/stores/settings';
@@ -58,6 +62,10 @@ export interface UseSettingsReturn {
   setAutoSelectTemplate: (enabled: boolean) => void;
   contextOptimizationEnabled: boolean;
   enableContextOptimization: (enabled: boolean) => void;
+  autoFixErrors: boolean;
+  setAutoFixErrors: (enabled: boolean) => void;
+  customInstructions: string;
+  setCustomInstructions: (instructions: string) => void;
 
   // Tab configuration
   tabConfiguration: TabWindowConfig;
@@ -78,6 +86,8 @@ export function useSettings(): UseSettingsReturn {
   const autoSelectTemplate = useStore(autoSelectStarterTemplate);
   const [activeProviders, setActiveProviders] = useState<ProviderInfo[]>([]);
   const contextOptimizationEnabled = useStore(enableContextOptimizationStore);
+  const autoFixErrors = useStore(autoFixErrorsStore);
+  const customInstructions = useStore(customInstructionsStore);
   const tabConfiguration = useStore(tabConfigurationStore);
   const [settings, setSettings] = useState<Settings>(() => {
     const storedSettings = getLocalStorage('settings');
@@ -143,6 +153,15 @@ export function useSettings(): UseSettingsReturn {
     logStore.logSystem(`Context optimization ${enabled ? 'enabled' : 'disabled'}`);
   }, []);
 
+  const setAutoFixErrors = useCallback((enabled: boolean) => {
+    updateAutoFixErrors(enabled);
+    logStore.logSystem(`Auto fix errors ${enabled ? 'enabled' : 'disabled'}`);
+  }, []);
+
+  const setCustomInstructions = useCallback((instructions: string) => {
+    updateCustomInstructions(instructions);
+  }, []);
+
   const setTheme = useCallback(
     (theme: Settings['theme']) => {
       saveSettings({ theme });
@@ -197,6 +216,10 @@ export function useSettings(): UseSettingsReturn {
     setAutoSelectTemplate,
     contextOptimizationEnabled,
     enableContextOptimization,
+    autoFixErrors,
+    setAutoFixErrors,
+    customInstructions,
+    setCustomInstructions,
     setTheme,
     setLanguage,
     setNotifications,

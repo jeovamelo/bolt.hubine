@@ -79,7 +79,7 @@ export default class DeepseekProvider extends BaseProvider {
         headers: {
           Authorization: `Bearer ${apiKey}`,
         },
-        signal: this.createTimeoutSignal(5000),
+        signal: this.createTimeoutSignal(15000),
       });
 
       if (!response.ok) {

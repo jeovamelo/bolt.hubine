@@ -110,14 +110,24 @@ export default function FeaturesTab() {
     autoSelectTemplate,
     isLatestBranch,
     contextOptimizationEnabled,
+    autoFixErrors,
+    customInstructions,
     eventLogs,
     setAutoSelectTemplate,
     enableLatestBranch,
     enableContextOptimization,
+    setAutoFixErrors,
+    setCustomInstructions,
     setEventLogs,
     setPromptId,
     promptId,
   } = useSettings();
+
+  const [instructionsDraft, setInstructionsDraft] = React.useState(customInstructions);
+
+  React.useEffect(() => {
+    setInstructionsDraft(customInstructions);
+  }, [customInstructions]);
 
   // Enable features by default on first load
   React.useEffect(() => {
@@ -164,6 +174,12 @@ export default function FeaturesTab() {
           break;
         }
 
+        case 'autoFixErrors': {
+          setAutoFixErrors(enabled);
+          toast.success(`Auto fix errors ${enabled ? 'enabled' : 'disabled'}`);
+          break;
+        }
+
         case 'eventLogs': {
           setEventLogs(enabled);
           toast.success(`Event logging ${enabled ? 'enabled' : 'disabled'}`);
@@ -174,7 +190,7 @@ export default function FeaturesTab() {
           break;
       }
     },
-    [enableLatestBranch, setAutoSelectTemplate, enableContextOptimization, setEventLogs],
+    [enableLatestBranch, setAutoSelectTemplate, enableContextOptimization, setAutoFixErrors, setEventLogs],
   );
 
   const features = {
@@ -212,7 +228,18 @@ export default function FeaturesTab() {
         tooltip: 'Enabled by default to record detailed logs of system events and user actions',
       },
     ],
-    beta: [],
+    beta: [
+      {
+        id: 'autoFixErrors',
+        title: 'Auto Fix Errors',
+        description: 'Automatically ask the AI to fix preview and terminal errors',
+        icon: 'i-ph:robot',
+        enabled: autoFixErrors,
+        beta: true,
+        tooltip:
+          'When an error occurs, the fix request is sent automatically (up to 3 consecutive attempts). Each attempt uses AI credits.',
+      },
+    ],
   };
 
   return (
@@ -288,6 +315,71 @@ export default function FeaturesTab() {
               </option>
             ))}
           </select>
+        </div>
+      </motion.div>
+
+      <motion.div
+        layout
+        className={classNames(
+          'bg-bolt-elements-background-depth-2',
+          'hover:bg-bolt-elements-background-depth-3',
+          'transition-all duration-200',
+          'rounded-lg p-4',
+          'group',
+        )}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className={classNames(
+              'p-2 rounded-lg text-xl',
+              'bg-bolt-elements-background-depth-3 group-hover:bg-bolt-elements-background-depth-4',
+              'transition-colors duration-200',
+              'text-purple-500',
+            )}
+          >
+            <div className="i-ph:note-pencil" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-bolt-elements-textPrimary group-hover:text-purple-500 transition-colors">
+              Custom Instructions
+            </h4>
+            <p className="text-xs text-bolt-elements-textSecondary mt-0.5 mb-3">
+              Personal instructions appended to every chat (coding style, language, frameworks you prefer, etc.)
+            </p>
+            <textarea
+              value={instructionsDraft}
+              onChange={(e) => setInstructionsDraft(e.target.value)}
+              rows={4}
+              placeholder="e.g. Always answer in Portuguese. Prefer Tailwind. Use pnpm in shell commands."
+              className={classNames(
+                'w-full p-3 rounded-lg text-sm resize-y min-h-[90px]',
+                'bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor',
+                'text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary',
+                'focus:outline-none focus:ring-2 focus:ring-purple-500/30',
+                'transition-all duration-200',
+              )}
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={() => {
+                  setCustomInstructions(instructionsDraft.trim());
+                  toast.success('Custom instructions saved');
+                }}
+                disabled={instructionsDraft.trim() === customInstructions.trim()}
+                className={classNames(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  instructionsDraft.trim() === customInstructions.trim()
+                    ? 'bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary cursor-not-allowed'
+                    : 'bg-purple-500 text-white hover:bg-purple-600',
+                )}
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>
